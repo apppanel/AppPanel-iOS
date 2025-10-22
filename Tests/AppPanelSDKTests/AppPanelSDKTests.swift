@@ -28,9 +28,9 @@ final class AppPanelSDKTests: XCTestCase {
     }
 
     func testConfigurationWithOptions() {
-        let customURL = URL(string: "https://test.apppanel.io")!
+        let customURL = "https://test.apppanel.io"
         let options = AppPanelOptions(
-            customBaseURL: customURL,
+            environment: .custom(customURL),
             enableDebugLogging: true,
             autoInitializePush: false,
             sessionTimeout: 900,
@@ -41,7 +41,7 @@ final class AppPanelSDKTests: XCTestCase {
 
         XCTAssertTrue(AppPanel.shared.isConfigured)
         XCTAssertNotNil(AppPanel.shared.push)
-        XCTAssertEqual(AppPanel.shared.configuration?.baseURL, customURL)
+        XCTAssertEqual(AppPanel.shared.configuration?.baseURL, URL(string: customURL))
         XCTAssertEqual(AppPanel.shared.configuration?.options.enableDebugLogging, true)
         XCTAssertEqual(AppPanel.shared.configuration?.options.sessionTimeout, 900)
         XCTAssertEqual(AppPanel.shared.configuration?.options.maxRetryAttempts, 10)
