@@ -53,38 +53,28 @@ class AppPanelTokenManager {
             return
         }
 
-        // Prepare registration payload
-        var payload: [String: Any] = [
-            "apns_token": apnsToken,
-            "device_id": AppPanel.shared.deviceId ?? "unknown",  // Include device ID
-            "platform": "ios",
-            "app_version": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
-            "bundle_id": Bundle.main.bundleIdentifier ?? "unknown",
-            "timezone": TimeZone.current.identifier,
-            "locale": Locale.current.identifier,
-            "is_token_update": tokenChanged, // Inform backend if this is an update
+        // Prepare registration payload - simplified for new endpoint
+        let payload: [String: Any] = [
+            "device_id": AppPanel.shared.deviceId ?? "unknown",
+            "apns_token": apnsToken
         ]
-
-        #if canImport(UIKit)
-            payload["os_version"] = UIDevice.current.systemVersion
-            payload["device_model"] = UIDevice.current.model
-        #endif
 
         // Make registration request
         networkClient.request(
-            endpoint: "/v1/push/register",
+            endpoint: "/v1/identify/device/apns",
             method: .post,
             payload: payload
-        ) { [weak self] (result: Result<TokenResponse, Error>) in
+        ) { [weak self] (result: Result<EmptyResponse, Error>) in
             guard let self = self else { return }
 
             switch result {
-            case let .success(response):
-                // Store the token
-                self.storage.savePushToken(response.token, forAPNsToken: apnsToken)
+            case .success:
+                // Store the APNs token locally
+                self.storage.savePushToken(apnsToken, forAPNsToken: apnsToken)
 
-                self.delegate?.tokenManager(self, didReceiveToken: response.token)
-                completion?(response.token, nil)
+                AppPanelLogger.info("APNs token registered successfully")
+                self.delegate?.tokenManager(self, didReceiveToken: apnsToken)
+                completion?(apnsToken, nil)
 
             case let .failure(error):
                 AppPanelLogger.error("Failed to register token", error: error)
@@ -94,14 +84,19 @@ class AppPanelTokenManager {
         }
     }
 
-    /// Delete a push token
+    /// Delete a push token (unregister APNs token from device)
     func deleteToken(_ token: String, completion: @escaping (Bool, Error?) -> Void) {
         AppPanelLogger.debug("Deleting push token")
 
+        // For the new endpoint, we just need to send device_id without apns_token
+        let payload: [String: Any] = [
+            "device_id": AppPanel.shared.deviceId ?? "unknown"
+        ]
+
         networkClient.request(
-            endpoint: "/v1/push/unregister",
-            method: .post,
-            payload: ["token": token]
+            endpoint: "/v1/identify/device/apns",
+            method: .delete,
+            payload: payload
         ) { [weak self] (result: Result<EmptyResponse, Error>) in
             switch result {
             case .success:
@@ -113,6 +108,8 @@ class AppPanelTokenManager {
         }
     }
 
+    // TODO: Topic subscription endpoints not yet available
+    /*
     /// Subscribe to a topic
     func subscribeToTopic(topic: String, completion: @escaping (Bool, Error?) -> Void) {
         AppPanelLogger.debug("Subscribing to topic: \(topic)")
@@ -196,15 +193,10 @@ class AppPanelTokenManager {
             }
         }
     }
+    */
 
     /// Get cached token if available
     func getCachedToken() -> String? {
         return storage.getCurrentPushToken()
     }
-}
-
-// MARK: - Response Models
-
-private struct TokenResponse: Codable {
-    let token: String
 }

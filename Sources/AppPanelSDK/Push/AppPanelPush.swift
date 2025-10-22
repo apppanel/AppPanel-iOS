@@ -126,6 +126,8 @@ public class AppPanelPush: NSObject {
         }
     }
 
+    // TODO: Topic subscription endpoints not yet available
+    /*
     /// Subscribe to a topic for targeted messaging
     /// - Parameters:
     ///   - topic: The topic name to subscribe to
@@ -143,40 +145,52 @@ public class AppPanelPush: NSObject {
         // Token check is now handled internally by tokenManager
         tokenManager.unsubscribeFromTopic(topic: topic, completion: completion)
     }
+    */
 
     /// Handle a received push notification
     /// Call this from your notification delegate methods
     /// - Parameter userInfo: The notification payload
-    public func handleNotification(_ userInfo: [AnyHashable: Any]) {
+    /// - Returns: The parsed notification object, or nil if invalid
+    @discardableResult
+    public func handleNotification(_ userInfo: [AnyHashable: Any]) -> AppPanelNotification? {
         AppPanelLogger.debug("Handling notification: \(userInfo)")
 
-        // Parse and handle the notification
-        if let notification = AppPanelNotification(userInfo: userInfo) {
-            delegate?.appPanelPush(self, didReceiveNotification: notification)
-
-            // Track notification received event
-            trackNotificationReceived(notification)
+        // Parse the notification
+        guard let notification = AppPanelNotification(userInfo: userInfo) else {
+            AppPanelLogger.warning("Failed to parse notification from userInfo")
+            return nil
         }
+
+        // TODO: Analytics tracking not yet available
+        // trackNotificationReceived(notification)
+
+        // Notify delegate if they want to know
+        delegate?.appPanelPush(self, didReceiveNotification: notification)
+
+        return notification
     }
 
     /// Handle notification response (when user taps on notification)
-    /// - Parameters:
-    ///   - response: The notification response
-    ///   - completion: Completion handler
+    /// - Parameter response: The notification response
+    /// - Returns: The parsed notification object with action identifier, or nil if invalid
     @available(iOS 10.0, macOS 10.14, *)
-    public func handleNotificationResponse(_ response: UNNotificationResponse, completion: @escaping () -> Void) {
+    @discardableResult
+    public func handleNotificationResponse(_ response: UNNotificationResponse) -> (notification: AppPanelNotification, actionIdentifier: String)? {
         let userInfo = response.notification.request.content.userInfo
         AppPanelLogger.debug("Handling notification response: \(userInfo)")
 
-        if let notification = AppPanelNotification(userInfo: userInfo) {
-            // Track notification opened event
-            trackNotificationOpened(notification)
-
-            // Notify delegate
-            delegate?.appPanelPush(self, didReceiveNotificationResponse: notification, actionIdentifier: response.actionIdentifier)
+        guard let notification = AppPanelNotification(userInfo: userInfo) else {
+            AppPanelLogger.warning("Failed to parse notification response")
+            return nil
         }
 
-        completion()
+        // TODO: Analytics tracking not yet available
+        // trackNotificationOpened(notification)
+
+        // Notify delegate if they want to know
+        delegate?.appPanelPush(self, didReceiveNotificationResponse: notification, actionIdentifier: response.actionIdentifier)
+
+        return (notification, response.actionIdentifier)
     }
 
     // MARK: - Private Methods
@@ -200,6 +214,8 @@ public class AppPanelPush: NSObject {
         }
     }
 
+    // TODO: Analytics tracking not yet available
+    /*
     private func trackNotificationReceived(_ notification: AppPanelNotification) {
         // Send analytics event for notification received
         tokenManager.trackEvent(
@@ -221,6 +237,7 @@ public class AppPanelPush: NSObject {
             ]
         )
     }
+    */
 }
 
 // MARK: - AppPanelTokenManagerDelegate

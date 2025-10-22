@@ -39,7 +39,7 @@ class AppPanelStorage {
         }
 
         // Generate new device ID
-        let newId = "ios_\(UUID().uuidString.lowercased())"
+        let newId = UUID().uuidString.lowercased()
         saveDeviceId(newId)
         return newId
     }
@@ -52,7 +52,7 @@ class AppPanelStorage {
 
     /// Regenerate the device ID
     func regenerateDeviceId() -> String {
-        let newId = "ios_\(UUID().uuidString.lowercased())"
+        let newId = UUID().uuidString.lowercased()
         saveDeviceId(newId)
         return newId
     }

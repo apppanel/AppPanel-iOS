@@ -63,6 +63,9 @@ public class AppPanel {
         // Initialize network client
         self.networkClient = AppPanelNetworkClient(configuration: configuration!)
 
+        // Register device with backend
+        registerDevice()
+
         // Initialize push notifications
         self.push = AppPanelPush(configuration: configuration!)
 
@@ -84,110 +87,35 @@ public class AppPanel {
     }
 
     // MARK: - User Management
-
-    /// Login a user and bind them to the device ID
-    /// - Parameters:
-    ///   - userId: The unique user identifier
-    ///   - completion: Completion handler with success status
-    public static func login(userId: String, completion: @escaping (Bool, Error?) -> Void) {
-        shared.login(userId: userId, completion: completion)
-    }
-
-    internal func login(userId: String, completion: @escaping (Bool, Error?) -> Void) {
-        guard isConfigured else {
-            completion(false, AppPanelError.notConfigured)
-            return
-        }
-
-        guard !userId.isEmpty else {
-            completion(false, AppPanelError.invalidConfiguration("User ID cannot be empty"))
-            return
-        }
-
-        guard let deviceId = deviceId else {
-            completion(false, AppPanelError.invalidConfiguration("Device ID not initialized"))
-            return
-        }
-
-        AppPanelLogger.info("Logging in user: \(userId)")
-
-        let payload: [String: Any] = [
-            "user_id": userId,
-            "device_id": deviceId
-        ]
-
-        networkClient?.request(
-            endpoint: "/v1/users/login",
-            method: .post,
-            payload: payload
-        ) { [weak self] (result: Result<EmptyResponse, Error>) in
-            switch result {
-            case .success:
-                self?.currentUserId = userId
-                AppPanelLogger.info("User logged in successfully: \(userId)")
-                completion(true, nil)
-            case .failure(let error):
-                AppPanelLogger.error("Failed to login user", error: error)
-                completion(false, error)
-            }
-        }
-    }
-
-    /// Logout the current user
-    /// - Parameter completion: Completion handler with success status
-    public static func logout(completion: @escaping (Bool, Error?) -> Void) {
-        shared.logout(completion: completion)
-    }
-
-    internal func logout(completion: @escaping (Bool, Error?) -> Void) {
-        guard isConfigured else {
-            completion(false, AppPanelError.notConfigured)
-            return
-        }
-
-        guard let userId = currentUserId else {
-            AppPanelLogger.warning("No user logged in")
-            completion(true, nil)
-            return
-        }
-
-        guard let deviceId = deviceId else {
-            completion(false, AppPanelError.invalidConfiguration("Device ID not initialized"))
-            return
-        }
-
-        AppPanelLogger.info("Logging out user: \(userId)")
-
-        let payload: [String: Any] = [
-            "user_id": userId,
-            "device_id": deviceId
-        ]
-
-        networkClient?.request(
-            endpoint: "/v1/users/logout",
-            method: .post,
-            payload: payload
-        ) { [weak self] (result: Result<EmptyResponse, Error>) in
-            switch result {
-            case .success:
-                self?.currentUserId = nil
-                AppPanelLogger.info("User logged out successfully")
-                completion(true, nil)
-            case .failure(let error):
-                AppPanelLogger.error("Failed to logout user", error: error)
-                completion(false, error)
-            }
-        }
-    }
-
-    /// Get the current logged in user ID
-    public static func getCurrentUserId() -> String? {
-        return shared.currentUserId
-    }
+    // TODO: User login/logout endpoints not yet available
+    // These will be implemented when the backend endpoints are ready
 
     /// Get the device ID
     public static func getDeviceId() -> String? {
         return shared.deviceId
+    }
+
+    // MARK: - Private Methods
+
+    private func registerDevice() {
+        guard let deviceId = deviceId else { return }
+
+        let payload: [String: Any] = [
+            "device_id": deviceId
+        ]
+
+        networkClient?.request(
+            endpoint: "/v1/identify/device",
+            method: .post,
+            payload: payload
+        ) { (result: Result<EmptyResponse, Error>) in
+            switch result {
+            case .success:
+                AppPanelLogger.debug("Device registered successfully")
+            case .failure(let error):
+                AppPanelLogger.error("Failed to register device", error: error)
+            }
+        }
     }
 
     /// Regenerate the device ID (this will break all associations)
@@ -208,23 +136,22 @@ public class AppPanel {
 
         AppPanelLogger.info("Regenerated device ID from \(oldDeviceId ?? "nil") to \(newDeviceId)")
 
-        // Notify backend of device ID change
+        // Register the new device ID with backend
         let payload: [String: Any] = [
-            "old_device_id": oldDeviceId ?? "",
-            "new_device_id": newDeviceId
+            "device_id": newDeviceId
         ]
 
         networkClient?.request(
-            endpoint: "/v1/devices/regenerate",
+            endpoint: "/v1/identify/device",
             method: .post,
             payload: payload
         ) { (result: Result<EmptyResponse, Error>) in
             switch result {
             case .success:
-                AppPanelLogger.info("Device ID regeneration synced with backend")
+                AppPanelLogger.info("New device ID registered with backend")
                 completion(newDeviceId, nil)
             case .failure(let error):
-                AppPanelLogger.error("Failed to sync device ID regeneration", error: error)
+                AppPanelLogger.error("Failed to register new device ID", error: error)
                 // Still return the new ID as it's already saved locally
                 completion(newDeviceId, error)
             }

@@ -58,7 +58,7 @@ class AppPanelNetworkClient {
         request.httpMethod = method.rawValue
 
         // Add API key header
-        request.setValue("Bearer \(configuration.apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue(configuration.apiKey, forHTTPHeaderField: "X-AppPanel-API-Key")
 
         // Add payload if provided
         if let payload = payload {
