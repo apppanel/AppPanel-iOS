@@ -3,17 +3,10 @@ import Foundation
     import UIKit
 #endif
 
-/// Protocol for token manager delegate
-protocol AppPanelTokenManagerDelegate: AnyObject {
-    func tokenManager(_ manager: AppPanelTokenManager, didReceiveToken token: String)
-    func tokenManager(_ manager: AppPanelTokenManager, didFailWithError error: Error)
-}
-
 /// Manages token registration and lifecycle with the AppPanel backend
 class AppPanelTokenManager {
     // MARK: - Properties
 
-    weak var delegate: AppPanelTokenManagerDelegate?
     private let configuration: AppPanelConfiguration
     private let networkClient: AppPanelNetworkClient
     private let storage: AppPanelStorage
@@ -48,7 +41,6 @@ class AppPanelTokenManager {
         // Only use cached token if APNs token hasn't changed
         if !tokenChanged, let cachedToken = storage.getPushToken(forAPNsToken: apnsToken) {
             AppPanelLogger.debug("Using cached AppPanel token (APNs token unchanged)")
-            delegate?.tokenManager(self, didReceiveToken: cachedToken)
             completion?(cachedToken, nil)
             return
         }
@@ -73,12 +65,10 @@ class AppPanelTokenManager {
                 self.storage.savePushToken(apnsToken, forAPNsToken: apnsToken)
 
                 AppPanelLogger.info("APNs token registered successfully")
-                self.delegate?.tokenManager(self, didReceiveToken: apnsToken)
                 completion?(apnsToken, nil)
 
             case let .failure(error):
                 AppPanelLogger.error("Failed to register token", error: error)
-                self.delegate?.tokenManager(self, didFailWithError: error)
                 completion?(nil, error)
             }
         }

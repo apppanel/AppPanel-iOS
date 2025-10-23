@@ -1,16 +1,10 @@
 import Foundation
 import UserNotifications
-#if canImport(UIKit)
-import UIKit
-#endif
 
 /// Manages push notifications for the AppPanel SDK
-public class AppPanelPush: NSObject {
+public class AppPanelPush {
 
     // MARK: - Properties
-
-    /// The delegate for push notification events
-    public weak var delegate: AppPanelPushDelegate?
 
     /// The current device push token
     public private(set) var deviceToken: String?
@@ -32,17 +26,6 @@ public class AppPanelPush: NSObject {
     internal init(configuration: AppPanelConfiguration) {
         self.configuration = configuration
         self.tokenManager = AppPanelTokenManager(configuration: configuration)
-        super.init()
-
-        // Set up token manager delegate
-        tokenManager.delegate = self
-
-        // Set up notification observers
-        setupNotificationObservers()
-    }
-
-    deinit {
-        NotificationCenter.default.removeObserver(self)
     }
 
     // MARK: - Public Methods
@@ -61,31 +44,44 @@ public class AppPanelPush: NSObject {
         // Check if we already have a cached token
         if let cachedToken = tokenManager.getCachedToken() {
             self.pushToken = cachedToken
-            delegate?.appPanelPush(self, didReceiveRegistrationToken: cachedToken)
         }
     }
 
     /// Set the APNs device token
     /// Call this from your AppDelegate's didRegisterForRemoteNotificationsWithDeviceToken method
-    /// - Parameter deviceToken: The device token received from APNs
-    public func setAPNsToken(_ deviceToken: Data) {
+    /// - Parameters:
+    ///   - deviceToken: The device token received from APNs
+    ///   - completion: Optional completion handler called with the AppPanel token or error
+    public func setAPNsToken(_ deviceToken: Data, completion: ((String?, Error?) -> Void)? = nil) {
         let tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
         self.deviceToken = tokenString
         AppPanelLogger.debug("APNs token received: \(tokenString)")
 
         // Register with AppPanel backend
-        tokenManager.registerToken(apnsToken: tokenString)
+        tokenManager.registerToken(apnsToken: tokenString) { [weak self] token, error in
+            if let token = token {
+                self?.pushToken = token
+            }
+            completion?(token, error)
+        }
     }
 
     /// Set the APNs device token from a string
     /// Alternative method if you already have the token as a string
-    /// - Parameter tokenString: The device token string
-    public func setAPNsToken(_ tokenString: String) {
+    /// - Parameters:
+    ///   - tokenString: The device token string
+    ///   - completion: Optional completion handler called with the AppPanel token or error
+    public func setAPNsToken(_ tokenString: String, completion: ((String?, Error?) -> Void)? = nil) {
         self.deviceToken = tokenString
         AppPanelLogger.debug("APNs token received: \(tokenString)")
 
         // Register with AppPanel backend
-        tokenManager.registerToken(apnsToken: tokenString)
+        tokenManager.registerToken(apnsToken: tokenString) { [weak self] token, error in
+            if let token = token {
+                self?.pushToken = token
+            }
+            completion?(token, error)
+        }
     }
 
     /// Get the current push token
@@ -147,13 +143,12 @@ public class AppPanelPush: NSObject {
     }
     */
 
-    /// Handle a received push notification
-    /// Call this from your notification delegate methods
-    /// - Parameter userInfo: The notification payload
-    /// - Returns: The parsed notification object, or nil if invalid
-    @discardableResult
-    public func handleNotification(_ userInfo: [AnyHashable: Any]) -> AppPanelNotification? {
-        AppPanelLogger.debug("Handling notification: \(userInfo)")
+    /// Parse a received push notification
+    /// Call this from your UNUserNotificationCenterDelegate methods
+    /// - Parameter userInfo: The notification payload from APNs
+    /// - Returns: The parsed AppPanelNotification object, or nil if not an AppPanel notification
+    public func parseNotification(_ userInfo: [AnyHashable: Any]) -> AppPanelNotification? {
+        AppPanelLogger.debug("Parsing notification: \(userInfo)")
 
         // Parse the notification
         guard let notification = AppPanelNotification(userInfo: userInfo) else {
@@ -164,20 +159,17 @@ public class AppPanelPush: NSObject {
         // TODO: Analytics tracking not yet available
         // trackNotificationReceived(notification)
 
-        // Notify delegate if they want to know
-        delegate?.appPanelPush(self, didReceiveNotification: notification)
-
         return notification
     }
 
-    /// Handle notification response (when user taps on notification)
-    /// - Parameter response: The notification response
-    /// - Returns: The parsed notification object with action identifier, or nil if invalid
+    /// Parse a notification response (when user taps on notification)
+    /// Call this from your UNUserNotificationCenterDelegate didReceive response method
+    /// - Parameter response: The UNNotificationResponse from the system delegate
+    /// - Returns: The parsed AppPanelNotification and action identifier, or nil if not an AppPanel notification
     @available(iOS 10.0, macOS 10.14, *)
-    @discardableResult
-    public func handleNotificationResponse(_ response: UNNotificationResponse) -> (notification: AppPanelNotification, actionIdentifier: String)? {
+    public func parseNotificationResponse(_ response: UNNotificationResponse) -> (notification: AppPanelNotification, actionIdentifier: String)? {
         let userInfo = response.notification.request.content.userInfo
-        AppPanelLogger.debug("Handling notification response: \(userInfo)")
+        AppPanelLogger.debug("Parsing notification response: \(userInfo)")
 
         guard let notification = AppPanelNotification(userInfo: userInfo) else {
             AppPanelLogger.warning("Failed to parse notification response")
@@ -187,31 +179,7 @@ public class AppPanelPush: NSObject {
         // TODO: Analytics tracking not yet available
         // trackNotificationOpened(notification)
 
-        // Notify delegate if they want to know
-        delegate?.appPanelPush(self, didReceiveNotificationResponse: notification, actionIdentifier: response.actionIdentifier)
-
         return (notification, response.actionIdentifier)
-    }
-
-    // MARK: - Private Methods
-
-    private func setupNotificationObservers() {
-        #if canImport(UIKit)
-        // Listen for app lifecycle events
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(applicationDidBecomeActive),
-            name: UIApplication.didBecomeActiveNotification,
-            object: nil
-        )
-        #endif
-    }
-
-    @objc private func applicationDidBecomeActive() {
-        // Refresh token if needed
-        if isInitialized && pushToken == nil && deviceToken != nil {
-            tokenManager.registerToken(apnsToken: deviceToken!)
-        }
     }
 
     // TODO: Analytics tracking not yet available
@@ -240,17 +208,3 @@ public class AppPanelPush: NSObject {
     */
 }
 
-// MARK: - AppPanelTokenManagerDelegate
-
-extension AppPanelPush: AppPanelTokenManagerDelegate {
-    func tokenManager(_ manager: AppPanelTokenManager, didReceiveToken token: String) {
-        self.pushToken = token
-        AppPanelLogger.info("Received AppPanel push token: \(token)")
-        delegate?.appPanelPush(self, didReceiveRegistrationToken: token)
-    }
-
-    func tokenManager(_ manager: AppPanelTokenManager, didFailWithError error: Error) {
-        AppPanelLogger.error("Token manager failed", error: error)
-        delegate?.appPanelPush(self, didFailWithError: error)
-    }
-}
