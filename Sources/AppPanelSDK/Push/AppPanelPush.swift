@@ -6,11 +6,8 @@ public class AppPanelPush {
 
     // MARK: - Properties
 
-    /// The current device push token
-    public private(set) var deviceToken: String?
-
-    /// The current AppPanel push token (mapped from APNs token)
-    public private(set) var pushToken: String?
+    /// Stored APNs token to avoid redundant registrations
+    private var deviceToken: String?
 
     /// Token manager for handling token lifecycle
     private let tokenManager: AppPanelTokenManager
@@ -40,86 +37,29 @@ public class AppPanelPush {
 
         AppPanelLogger.info("Initializing AppPanel Push Notifications")
         isInitialized = true
-
-        // Check if we already have a cached token
-        if let cachedToken = tokenManager.getCachedToken() {
-            self.pushToken = cachedToken
-        }
     }
 
     /// Set the APNs device token
     /// Call this from your AppDelegate's didRegisterForRemoteNotificationsWithDeviceToken method
-    /// - Parameters:
-    ///   - deviceToken: The device token received from APNs
-    ///   - completion: Optional completion handler called with the AppPanel token or error
-    public func setAPNsToken(_ deviceToken: Data, completion: ((String?, Error?) -> Void)? = nil) {
+    /// - Parameter deviceToken: The device token received from APNs
+    public func setAPNsToken(_ deviceToken: Data) {
         let tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
         self.deviceToken = tokenString
         AppPanelLogger.debug("APNs token received: \(tokenString)")
 
-        // Register with AppPanel backend
-        tokenManager.registerToken(apnsToken: tokenString) { [weak self] token, error in
-            if let token = token {
-                self?.pushToken = token
-            }
-            completion?(token, error)
-        }
+        // Register with AppPanel backend (fire-and-forget)
+        tokenManager.registerToken(apnsToken: tokenString) { _, _ in }
     }
 
     /// Set the APNs device token from a string
     /// Alternative method if you already have the token as a string
-    /// - Parameters:
-    ///   - tokenString: The device token string
-    ///   - completion: Optional completion handler called with the AppPanel token or error
-    public func setAPNsToken(_ tokenString: String, completion: ((String?, Error?) -> Void)? = nil) {
+    /// - Parameter tokenString: The device token string
+    public func setAPNsToken(_ tokenString: String) {
         self.deviceToken = tokenString
         AppPanelLogger.debug("APNs token received: \(tokenString)")
 
-        // Register with AppPanel backend
-        tokenManager.registerToken(apnsToken: tokenString) { [weak self] token, error in
-            if let token = token {
-                self?.pushToken = token
-            }
-            completion?(token, error)
-        }
-    }
-
-    /// Get the current push token
-    /// - Parameter completion: Completion handler with the token or error
-    public func getToken(completion: @escaping (String?, Error?) -> Void) {
-        if let token = pushToken {
-            completion(token, nil)
-        } else if let deviceToken = deviceToken {
-            // Try to register if we have APNs token but no AppPanel token
-            tokenManager.registerToken(apnsToken: deviceToken) { [weak self] token, error in
-                self?.pushToken = token
-                completion(token, error)
-            }
-        } else {
-            completion(nil, AppPanelError.tokenNotAvailable)
-        }
-    }
-
-    /// Get the current push token synchronously
-    /// Returns nil if token is not available yet
-    public func getToken() -> String? {
-        return pushToken
-    }
-
-    /// Delete the current push token (for logout scenarios)
-    public func deleteToken(completion: @escaping (Bool, Error?) -> Void) {
-        guard let token = pushToken else {
-            completion(true, nil)
-            return
-        }
-
-        tokenManager.deleteToken(token) { [weak self] success, error in
-            if success {
-                self?.pushToken = nil
-                self?.deviceToken = nil
-            }
-            completion(success, error)
-        }
+        // Register with AppPanel backend (fire-and-forget)
+        tokenManager.registerToken(apnsToken: tokenString) { _, _ in }
     }
 
     // TODO: Topic subscription endpoints not yet available
