@@ -33,7 +33,7 @@ public enum NetworkEnvironment: Encodable, CustomStringConvertible {
             try container.encode("releaseCandidate")
         case .developer:
             try container.encode("developer")
-        case .custom(let domain):
+        case let .custom(domain):
             try container.encode(domain)
         }
     }
@@ -43,7 +43,7 @@ public enum NetworkEnvironment: Encodable, CustomStringConvertible {
     }
 
     var baseURL: URL {
-        if case .custom(let domain) = self {
+        if case let .custom(domain) = self {
             if let url = URL(string: domain), url.scheme != nil {
                 return url
             }
@@ -61,7 +61,7 @@ public enum NetworkEnvironment: Encodable, CustomStringConvertible {
         switch self {
         case .release, .releaseCandidate, .developer:
             return "https"
-        case .custom(let domain):
+        case let .custom(domain):
             if let url = URL(string: domain) {
                 return url.scheme ?? "https"
             }
@@ -71,7 +71,7 @@ public enum NetworkEnvironment: Encodable, CustomStringConvertible {
 
     var port: Int? {
         switch self {
-        case .custom(let domain):
+        case let .custom(domain):
             if let url = URL(string: domain) {
                 return url.port
             }
@@ -89,9 +89,10 @@ public enum NetworkEnvironment: Encodable, CustomStringConvertible {
             return "apppanelcanary.io"
         case .developer:
             return "apppanel.dev"
-        case .custom(let domain):
+        case let .custom(domain):
             if let url = URL(string: domain),
-               let host = url.host {
+               let host = url.host
+            {
                 return host
             }
             return domain
@@ -109,7 +110,7 @@ public enum NetworkEnvironment: Encodable, CustomStringConvertible {
 }
 
 /// Configuration for the AppPanel SDK
-internal struct AppPanelConfiguration {
+struct AppPanelConfiguration {
     /// The API key for authentication
     let apiKey: String
 
@@ -135,9 +136,6 @@ public struct AppPanelOptions {
     /// Enable verbose logging
     public var enableDebugLogging: Bool = false
 
-    /// Automatically initialize push notifications on SDK configuration
-    public var autoInitializePush: Bool = true
-
     /// Session timeout in seconds
     public var sessionTimeout: TimeInterval = 3600
 
@@ -147,13 +145,12 @@ public struct AppPanelOptions {
     public init(
         environment: NetworkEnvironment = .release,
         enableDebugLogging: Bool = false,
-        autoInitializePush: Bool = true,
+        autoInitializePush _: Bool = true,
         sessionTimeout: TimeInterval = 3600,
         maxRetryAttempts: Int = 3
     ) {
         self.environment = environment
         self.enableDebugLogging = enableDebugLogging
-        self.autoInitializePush = autoInitializePush
         self.sessionTimeout = sessionTimeout
         self.maxRetryAttempts = maxRetryAttempts
     }

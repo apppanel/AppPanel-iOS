@@ -3,7 +3,6 @@ import UserNotifications
 
 /// Manages push notifications for the AppPanel SDK
 public class AppPanelPush {
-
     // MARK: - Properties
 
     /// Stored APNs token to avoid redundant registrations
@@ -15,28 +14,11 @@ public class AppPanelPush {
     /// Configuration
     private let configuration: AppPanelConfiguration
 
-    /// Indicates if push notifications are initialized
-    public private(set) var isInitialized: Bool = false
-
     // MARK: - Initialization
 
-    internal init(configuration: AppPanelConfiguration) {
+    init(configuration: AppPanelConfiguration) {
         self.configuration = configuration
-        self.tokenManager = AppPanelTokenManager(configuration: configuration)
-    }
-
-    // MARK: - Public Methods
-
-    /// Initialize push notifications
-    /// Note: This does not request permissions. The app must handle permission requests.
-    public func initialize() {
-        guard !isInitialized else {
-            AppPanelLogger.warning("Push notifications already initialized")
-            return
-        }
-
-        AppPanelLogger.info("Initializing AppPanel Push Notifications")
-        isInitialized = true
+        tokenManager = AppPanelTokenManager(configuration: configuration)
     }
 
     /// Set the APNs device token
@@ -55,7 +37,7 @@ public class AppPanelPush {
     /// Alternative method if you already have the token as a string
     /// - Parameter tokenString: The device token string
     public func setAPNsToken(_ tokenString: String) {
-        self.deviceToken = tokenString
+        deviceToken = tokenString
         AppPanelLogger.debug("APNs token received: \(tokenString)")
 
         // Register with AppPanel backend (fire-and-forget)
@@ -64,24 +46,24 @@ public class AppPanelPush {
 
     // TODO: Topic subscription endpoints not yet available
     /*
-    /// Subscribe to a topic for targeted messaging
-    /// - Parameters:
-    ///   - topic: The topic name to subscribe to
-    ///   - completion: Completion handler with success status
-    public func subscribeToTopic(_ topic: String, completion: @escaping (Bool, Error?) -> Void) {
-        // Token check is now handled internally by tokenManager
-        tokenManager.subscribeToTopic(topic: topic, completion: completion)
-    }
+     /// Subscribe to a topic for targeted messaging
+     /// - Parameters:
+     ///   - topic: The topic name to subscribe to
+     ///   - completion: Completion handler with success status
+     public func subscribeToTopic(_ topic: String, completion: @escaping (Bool, Error?) -> Void) {
+         // Token check is now handled internally by tokenManager
+         tokenManager.subscribeToTopic(topic: topic, completion: completion)
+     }
 
-    /// Unsubscribe from a topic
-    /// - Parameters:
-    ///   - topic: The topic name to unsubscribe from
-    ///   - completion: Completion handler with success status
-    public func unsubscribeFromTopic(_ topic: String, completion: @escaping (Bool, Error?) -> Void) {
-        // Token check is now handled internally by tokenManager
-        tokenManager.unsubscribeFromTopic(topic: topic, completion: completion)
-    }
-    */
+     /// Unsubscribe from a topic
+     /// - Parameters:
+     ///   - topic: The topic name to unsubscribe from
+     ///   - completion: Completion handler with success status
+     public func unsubscribeFromTopic(_ topic: String, completion: @escaping (Bool, Error?) -> Void) {
+         // Token check is now handled internally by tokenManager
+         tokenManager.unsubscribeFromTopic(topic: topic, completion: completion)
+     }
+     */
 
     /// Parse a received push notification
     /// Call this from your UNUserNotificationCenterDelegate methods
@@ -124,27 +106,26 @@ public class AppPanelPush {
 
     // TODO: Analytics tracking not yet available
     /*
-    private func trackNotificationReceived(_ notification: AppPanelNotification) {
-        // Send analytics event for notification received
-        tokenManager.trackEvent(
-            event: "notification_received",
-            properties: [
-                "notification_id": notification.id ?? "",
-                "campaign_id": notification.campaignId ?? ""
-            ]
-        )
-    }
+     private func trackNotificationReceived(_ notification: AppPanelNotification) {
+         // Send analytics event for notification received
+         tokenManager.trackEvent(
+             event: "notification_received",
+             properties: [
+                 "notification_id": notification.id ?? "",
+                 "campaign_id": notification.campaignId ?? ""
+             ]
+         )
+     }
 
-    private func trackNotificationOpened(_ notification: AppPanelNotification) {
-        // Send analytics event for notification opened
-        tokenManager.trackEvent(
-            event: "notification_opened",
-            properties: [
-                "notification_id": notification.id ?? "",
-                "campaign_id": notification.campaignId ?? ""
-            ]
-        )
-    }
-    */
+     private func trackNotificationOpened(_ notification: AppPanelNotification) {
+         // Send analytics event for notification opened
+         tokenManager.trackEvent(
+             event: "notification_opened",
+             properties: [
+                 "notification_id": notification.id ?? "",
+                 "campaign_id": notification.campaignId ?? ""
+             ]
+         )
+     }
+     */
 }
-

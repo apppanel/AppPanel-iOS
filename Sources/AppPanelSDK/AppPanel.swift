@@ -70,20 +70,6 @@ public class AppPanel {
         self.push = AppPanelPush(configuration: configuration!)
 
         AppPanelLogger.info("AppPanel SDK configured successfully")
-
-        // Auto-initialize push if enabled
-        if configuration?.options.autoInitializePush == true {
-            push?.initialize()
-        }
-    }
-
-    /// Reset the SDK configuration (mainly for testing)
-    public static func reset() {
-        shared.configuration = nil
-        shared.push = nil
-        shared.currentUserId = nil
-        shared.networkClient = nil
-        // Note: deviceId persists even after reset
     }
 
     // MARK: - User Management
