@@ -47,7 +47,7 @@ class AppPanelTokenManager {
 
         // Prepare registration payload - simplified for new endpoint
         let payload: [String: Any] = [
-            "device_id": AppPanel.shared.deviceId ?? "unknown",
+            "device_id": AppPanel.shared.deviceId.uuidString.lowercased(),
             "apns_token": apnsToken
         ]
 
@@ -80,7 +80,7 @@ class AppPanelTokenManager {
 
         // For the new endpoint, we just need to send device_id without apns_token
         let payload: [String: Any] = [
-            "device_id": AppPanel.shared.deviceId ?? "unknown"
+            "device_id": AppPanel.shared.deviceId.uuidString.lowercased()
         ]
 
         networkClient.request(

@@ -14,7 +14,7 @@ class AppPanelStorage {
     }
 
     // In-memory cache for quick access
-    private var deviceIdCache: String?
+    private var deviceIdCache: UUID?
     private var tokenCache: String?
     private var tokenMapping: [String: String] = [:] // APNs token -> AppPanel token
 
@@ -26,33 +26,34 @@ class AppPanelStorage {
     // MARK: - Device ID Management
 
     /// Get or generate the device ID
-    func getDeviceId() -> String {
+    func getDeviceId() -> UUID {
         // Check cache first
         if let cached = deviceIdCache {
             return cached
         }
 
         // Try to load from keychain
-        if let existingId = load(forKey: StorageKey.deviceId.rawValue) {
+        if let existingIdString = load(forKey: StorageKey.deviceId.rawValue),
+           let existingId = UUID(uuidString: existingIdString) {
             deviceIdCache = existingId
             return existingId
         }
 
         // Generate new device ID
-        let newId = UUID().uuidString.lowercased()
+        let newId = UUID()
         saveDeviceId(newId)
         return newId
     }
 
     /// Save a device ID
-    private func saveDeviceId(_ deviceId: String) {
-        save(deviceId, forKey: StorageKey.deviceId.rawValue, accessible: kSecAttrAccessibleAlways)
+    private func saveDeviceId(_ deviceId: UUID) {
+        save(deviceId.uuidString.lowercased(), forKey: StorageKey.deviceId.rawValue, accessible: kSecAttrAccessibleAlways)
         deviceIdCache = deviceId
     }
 
     /// Regenerate the device ID
-    func regenerateDeviceId() -> String {
-        let newId = UUID().uuidString.lowercased()
+    func regenerateDeviceId() -> UUID {
+        let newId = UUID()
         saveDeviceId(newId)
         return newId
     }

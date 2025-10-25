@@ -6,14 +6,14 @@ class AppPanelDeviceManager {
     private let storage = AppPanelStorage()
 
     /// Get or generate the device ID
-    func getDeviceId() -> String {
+    func getDeviceId() -> UUID {
         let deviceId = storage.getDeviceId()
         AppPanelLogger.debug("Device ID: \(deviceId)")
         return deviceId
     }
 
     /// Regenerate the device ID (user-initiated)
-    func regenerateDeviceId() -> String {
+    func regenerateDeviceId() -> UUID {
         let newId = storage.regenerateDeviceId()
         AppPanelLogger.info("Regenerated device ID: \(newId)")
         return newId

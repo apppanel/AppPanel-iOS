@@ -16,7 +16,7 @@ public class AppPanel {
     private let deviceManager = AppPanelDeviceManager()
 
     /// The persistent device ID
-    public private(set) var deviceId: String?
+    public private(set) var deviceId: UUID!
 
     /// The currently logged in user ID
     public private(set) var currentUserId: String?
@@ -77,17 +77,15 @@ public class AppPanel {
     // These will be implemented when the backend endpoints are ready
 
     /// Get the device ID
-    public static func getDeviceId() -> String? {
+    public static func getDeviceId() -> UUID {
         return shared.deviceId
     }
 
     // MARK: - Private Methods
 
     private func registerDevice() {
-        guard let deviceId = deviceId else { return }
-
         let payload: [String: Any] = [
-            "device_id": deviceId
+            "device_id": deviceId.uuidString.lowercased()
         ]
 
         networkClient?.request(
@@ -105,26 +103,26 @@ public class AppPanel {
     }
 
     /// Regenerate the device ID (this will break all associations)
-    /// - Parameter completion: Completion handler with the new device ID
-    public static func regenerateDeviceId(completion: @escaping (String?, Error?) -> Void) {
-        shared.regenerateDeviceId(completion: completion)
+    /// - Returns: The new device ID
+    public static func regenerateDeviceId() -> UUID {
+        return shared.regenerateDeviceId()
     }
 
-    internal func regenerateDeviceId(completion: @escaping (String?, Error?) -> Void) {
+    internal func regenerateDeviceId() -> UUID {
         guard isConfigured else {
-            completion(nil, AppPanelError.notConfigured)
-            return
+            AppPanelLogger.error("Cannot regenerate device ID: SDK not configured")
+            return deviceId
         }
 
-        let oldDeviceId = deviceId
+        let oldDeviceIdString = deviceId.uuidString
         let newDeviceId = deviceManager.regenerateDeviceId()
         self.deviceId = newDeviceId
 
-        AppPanelLogger.info("Regenerated device ID from \(oldDeviceId ?? "nil") to \(newDeviceId)")
+        AppPanelLogger.info("Regenerated device ID from \(oldDeviceIdString) to \(newDeviceId.uuidString)")
 
-        // Register the new device ID with backend
+        // Register the new device ID with backend (fire-and-forget)
         let payload: [String: Any] = [
-            "device_id": newDeviceId
+            "device_id": newDeviceId.uuidString.lowercased()
         ]
 
         networkClient?.request(
@@ -135,14 +133,12 @@ public class AppPanel {
             switch result {
             case .success:
                 AppPanelLogger.info("New device ID registered with backend")
-                completion(newDeviceId, nil)
             case .failure(let error):
                 AppPanelLogger.error("Failed to register new device ID", error: error)
-                // Still return the new ID as it's already saved locally
-                completion(newDeviceId, error)
             }
         }
 
         // Push token will automatically include new device ID on next registration
+        return newDeviceId
     }
 }
