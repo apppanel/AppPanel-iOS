@@ -77,36 +77,6 @@ class AppPanelTokenManager {
         }
     }
 
-    /// Delete a push token (unregister APNs token from device)
-    func deleteToken(_ token: String, completion: @escaping (Bool, Error?) -> Void) {
-        AppPanelLogger.debug("Deleting push token")
-
-        // For the new endpoint, we just need to send device_id without apns_token
-        struct DeletePayload: Encodable {
-            let device_id: String
-        }
-
-        let payload = DeletePayload(device_id: AppPanel.shared.deviceId.uuidString.lowercased())
-
-        Task { [weak self] in
-            guard let self = self else { return }
-
-            do {
-                let request = Request<Void>(
-                    path: "/v1/identify/device/apns",
-                    method: .delete,
-                    body: payload
-                )
-                _ = try await self.networkClient.send(request)
-
-                self.storage.deletePushToken(token)
-                completion(true, nil)
-            } catch {
-                completion(false, error)
-            }
-        }
-    }
-
     // TODO: Topic subscription endpoints not yet available
     /*
      /// Subscribe to a topic
