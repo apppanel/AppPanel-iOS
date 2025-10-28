@@ -22,7 +22,7 @@ public class AppPanel {
     public private(set) var currentUserId: String?
 
     /// Network client for API communication
-    private var networkClient: AppPanelNetworkClient?
+    private var networkClient: APIClient?
 
     /// Indicates if the SDK has been configured
     public var isConfigured: Bool {
@@ -61,7 +61,13 @@ public class AppPanel {
         AppPanelLogger.info("Device ID: \(deviceId!)")
 
         // Initialize network client
-        self.networkClient = AppPanelNetworkClient(configuration: configuration!)
+        self.networkClient = APIClient(baseURL: configuration!.baseURL) { config in
+            config.sessionConfiguration.httpAdditionalHeaders = [
+                "X-AppPanel-SDK-Version": "1.0.0",
+                "X-AppPanel-Platform": "iOS",
+                "X-AppPanel-API-Key": apiKey
+            ]
+        }
 
         // Register device with backend
         registerDevice()
@@ -84,19 +90,22 @@ public class AppPanel {
     // MARK: - Private Methods
 
     private func registerDevice() {
-        let payload: [String: Any] = [
-            "device_id": deviceId.uuidString.lowercased()
-        ]
+        struct DevicePayload: Encodable {
+            let device_id: String
+        }
 
-        networkClient?.request(
-            endpoint: "/v1/identify/device",
-            method: .post,
-            payload: payload
-        ) { (result: Result<EmptyResponse, Error>) in
-            switch result {
-            case .success:
+        let payload = DevicePayload(device_id: deviceId.uuidString.lowercased())
+
+        Task {
+            do {
+                let request = Request<Void>(
+                    path: "/v1/identify/device",
+                    method: .post,
+                    body: payload
+                )
+                _ = try await networkClient?.send(request)
                 AppPanelLogger.debug("Device registered successfully")
-            case .failure(let error):
+            } catch {
                 AppPanelLogger.error("Failed to register device", error: error)
             }
         }
@@ -121,19 +130,22 @@ public class AppPanel {
         AppPanelLogger.info("Regenerated device ID from \(oldDeviceIdString) to \(newDeviceId.uuidString)")
 
         // Register the new device ID with backend (fire-and-forget)
-        let payload: [String: Any] = [
-            "device_id": newDeviceId.uuidString.lowercased()
-        ]
+        struct DevicePayload: Encodable {
+            let device_id: String
+        }
 
-        networkClient?.request(
-            endpoint: "/v1/identify/device",
-            method: .post,
-            payload: payload
-        ) { (result: Result<EmptyResponse, Error>) in
-            switch result {
-            case .success:
+        let payload = DevicePayload(device_id: newDeviceId.uuidString.lowercased())
+
+        Task {
+            do {
+                let request = Request<Void>(
+                    path: "/v1/identify/device",
+                    method: .post,
+                    body: payload
+                )
+                _ = try await networkClient?.send(request)
                 AppPanelLogger.info("New device ID registered with backend")
-            case .failure(let error):
+            } catch {
                 AppPanelLogger.error("Failed to register new device ID", error: error)
             }
         }
