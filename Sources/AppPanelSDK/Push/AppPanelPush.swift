@@ -94,7 +94,7 @@ public class AppPanelPush {
         AppPanelLogger.debug("Parsing notification response: \(userInfo)")
 
         guard let notification = AppPanelNotification(userInfo: userInfo) else {
-            AppPanelLogger.warning("Failed to parse notification response")
+            AppPanelLogger.warn("Failed to parse notification response")
             return nil
         }
 

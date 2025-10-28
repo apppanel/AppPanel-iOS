@@ -139,19 +139,14 @@ public struct AppPanelOptions {
     /// Session timeout in seconds
     public var sessionTimeout: TimeInterval = 3600
 
-    /// Maximum retry attempts for failed requests
-    public var maxRetryAttempts: Int = 3
-
     public init(
         environment: NetworkEnvironment = .release,
         enableDebugLogging: Bool = false,
         autoInitializePush _: Bool = true,
-        sessionTimeout: TimeInterval = 3600,
-        maxRetryAttempts: Int = 3
+        sessionTimeout: TimeInterval = 3600
     ) {
         self.environment = environment
         self.enableDebugLogging = enableDebugLogging
         self.sessionTimeout = sessionTimeout
-        self.maxRetryAttempts = maxRetryAttempts
     }
 }

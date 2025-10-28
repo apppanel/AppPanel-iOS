@@ -6,13 +6,16 @@ import PackageDescription
 let package = Package(
     name: "AppPanelSDK",
     platforms: [
-        .iOS(.v13)
+        .iOS(.v13),
+        .macOS(.v10_12),
+        .watchOS("6.2"),
     ],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
             name: "AppPanelSDK",
-            targets: ["AppPanelSDK"]),
+            targets: ["AppPanelSDK"]
+        ),
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
@@ -23,10 +26,12 @@ let package = Package(
         .target(
             name: "AppPanelSDK",
             dependencies: [],
-            path: "Sources/AppPanelSDK"),
+            path: "Sources/AppPanelSDK"
+        ),
         .testTarget(
             name: "AppPanelSDKTests",
             dependencies: ["AppPanelSDK"],
-            path: "Tests/AppPanelSDKTests"),
+            path: "Tests/AppPanelSDKTests"
+        ),
     ]
 )

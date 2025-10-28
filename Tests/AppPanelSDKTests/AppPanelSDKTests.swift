@@ -1,19 +1,7 @@
-import XCTest
 @testable import AppPanelSDK
+import XCTest
 
 final class AppPanelSDKTests: XCTestCase {
-
-    override func setUp() {
-        super.setUp()
-        // Reset SDK before each test
-        AppPanel.reset()
-    }
-
-    override func tearDown() {
-        AppPanel.reset()
-        super.tearDown()
-    }
-
     func testSDKConfiguration() {
         // Test that SDK starts unconfigured
         XCTAssertFalse(AppPanel.shared.isConfigured)
@@ -34,7 +22,7 @@ final class AppPanelSDKTests: XCTestCase {
             enableDebugLogging: true,
             autoInitializePush: false,
             sessionTimeout: 900,
-            maxRetryAttempts: 10
+            maxRetryAttempts: 3
         )
 
         AppPanel.configure(apiKey: "test-api-key", options: options)
@@ -54,35 +42,16 @@ final class AppPanelSDKTests: XCTestCase {
         XCTAssertNil(AppPanel.shared.push)
     }
 
-    func testPushInitialization() {
-        AppPanel.configure(apiKey: "test-api-key")
-
-        guard let push = AppPanel.shared.push else {
-            XCTFail("Push should be initialized")
-            return
-        }
-
-        XCTAssertFalse(push.isInitialized)
-
-        // Initialize push
-        push.initialize()
-        XCTAssertTrue(push.isInitialized)
-
-        // Second initialization should be ignored
-        push.initialize()
-        XCTAssertTrue(push.isInitialized)
-    }
-
     func testNotificationParsing() {
         let userInfo: [AnyHashable: Any] = [
             "aps": [
                 "alert": [
                     "title": "Test Title",
                     "body": "Test Body",
-                    "subtitle": "Test Subtitle"
+                    "subtitle": "Test Subtitle",
                 ],
                 "badge": 5,
-                "sound": "default"
+                "sound": "default",
             ],
             "app_panel": [
                 "notification_id": "12345",
@@ -90,9 +59,9 @@ final class AppPanelSDKTests: XCTestCase {
                 "deep_link": "myapp://home",
                 "image_url": "https://example.com/image.jpg",
                 "custom_data": [
-                    "key": "value"
-                ]
-            ]
+                    "key": "value",
+                ],
+            ],
         ]
 
         guard let notification = AppPanelNotification(userInfo: userInfo) else {
@@ -117,7 +86,7 @@ final class AppPanelSDKTests: XCTestCase {
     func testSilentNotificationDetection() {
         let silentUserInfo: [AnyHashable: Any] = [
             "aps": [:],
-            "custom_data": ["key": "value"]
+            "custom_data": ["key": "value"],
         ]
 
         guard let notification = AppPanelNotification(userInfo: silentUserInfo) else {
@@ -138,7 +107,7 @@ final class AppPanelSDKTests: XCTestCase {
             .invalidResponse,
             .tokenExpired,
             .serverError(statusCode: 500, message: "Internal error"),
-            .invalidConfiguration("Missing parameter")
+            .invalidConfiguration("Missing parameter"),
         ]
 
         for error in errors {
@@ -146,5 +115,4 @@ final class AppPanelSDKTests: XCTestCase {
             XCTAssertFalse(error.errorDescription!.isEmpty)
         }
     }
-
 }

@@ -77,9 +77,7 @@ class AppPanelNetworkClient {
                 AppPanelLogger.debug("Payload: \(payload)")
             }
         }
-
-        // Perform request with retry logic
-        performRequest(request, retryCount: 0, maxRetries: configuration.options.maxRetryAttempts, completion: completion)
+        performRequest(request, retryCount: 0, maxRetries: 3, completion: completion)
     }
 
     private func performRequest<T: Decodable>(

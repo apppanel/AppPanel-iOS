@@ -1,65 +1,177 @@
+//
+//  AppPanelLogger.swift
+//  AppPanelSDK
+//
+//  Created by AppPanel Team
+//
+
 import Foundation
-import os
 
-/// Internal logging utility for the AppPanel SDK
-class AppPanelLogger {
-    private static let subsystem = "io.apppanel.sdk"
-    private static let category = "AppPanel"
+// MARK: - Log Level
 
-    private static var isDebugEnabled: Bool {
-        return AppPanel.shared.configuration?.options.enableDebugLogging ?? false
-    }
+public enum LogLevel: Int, CustomStringConvertible {
+    case debug = 0
+    case info = 1
+    case warn = 2
+    case error = 3
+    case none = 999
 
-    static func debug(_ message: String, file: String = #file, function: String = #function, line: Int = #line) {
-        guard isDebugEnabled else { return }
-        let fileName = (file as NSString).lastPathComponent
-        log(level: .debug, "[\(fileName):\(line)] \(function) - \(message)")
-    }
-
-    static func info(_ message: String) {
-        log(level: .info, message)
-    }
-
-    static func warning(_ message: String) {
-        log(level: .default, message)
-    }
-
-    static func error(_ message: String, error: Error? = nil) {
-        if let error = error {
-            log(level: .error, "\(message) - Error: \(error.localizedDescription)")
-        } else {
-            log(level: .error, message)
+    public var description: String {
+        switch self {
+        case .debug:
+            return "DEBUG"
+        case .info:
+            return "INFO"
+        case .warn:
+            return "WARN"
+        case .error:
+            return "ERROR"
+        case .none:
+            return "NONE"
         }
     }
 
-    static func critical(_ message: String, error: Error? = nil) {
-        if let error = error {
-            log(level: .fault, "\(message) - Error: \(error.localizedDescription)")
-        } else {
-            log(level: .fault, message)
+    var descriptionEmoji: String {
+        switch self {
+        case .debug:
+            return "🔍"
+        case .info:
+            return "ℹ️"
+        case .warn:
+            return "⚠️"
+        case .error:
+            return "❌"
+        case .none:
+            return ""
         }
     }
+}
 
-    private static func log(level: OSLogType, _ message: String) {
-        if #available(iOS 14.0, macOS 11.0, *) {
-            let logger = Logger(subsystem: subsystem, category: category)
-            switch level {
-            case .debug:
-                logger.debug("\(message)")
-            case .info:
-                logger.info("\(message)")
-            case .default:
-                logger.notice("\(message)")
-            case .error:
-                logger.error("\(message)")
-            case .fault:
-                logger.critical("\(message)")
-            default:
-                logger.log("\(message)")
+// MARK: - Loggable Protocol
+
+protocol Loggable {
+    static func shouldPrint(logLevel: LogLevel) -> Bool
+
+    static func debug(
+        logLevel: LogLevel,
+        message: String?,
+        info: [String: Any]?,
+        error: Swift.Error?
+    )
+}
+
+extension Loggable {
+    static func debug(
+        logLevel: LogLevel,
+        message: String? = nil,
+        info: [String: Any]? = nil,
+        error: Swift.Error? = nil
+    ) {
+        debug(
+            logLevel: logLevel,
+            message: message,
+            info: info,
+            error: error
+        )
+    }
+}
+
+// MARK: - Logger Implementation
+
+enum AppPanelLogger: Loggable {
+    static func shouldPrint(logLevel: LogLevel) -> Bool {
+        var currentLogLevel: LogLevel
+
+        if let options = AppPanel.shared.configuration?.options {
+            currentLogLevel = options.enableDebugLogging ? .debug : .info
+        } else {
+            currentLogLevel = .info
+        }
+
+        if currentLogLevel == .none {
+            return false
+        }
+
+        return logLevel.rawValue >= currentLogLevel.rawValue
+    }
+
+    static func debug(
+        logLevel: LogLevel,
+        message: String? = nil,
+        info: [String: Any]? = nil,
+        error: Swift.Error? = nil
+    ) {
+        Task.detached(priority: .utility) {
+            guard shouldPrint(logLevel: logLevel) else {
+                return
             }
-        } else {
-            // Fallback for older OS versions
-            os_log("%{public}@", log: OSLog(subsystem: subsystem, category: category), type: level, message)
+
+            // Only create expensive debug strings if we're actually going to print
+            var dumping: [String: Any] = [:]
+
+            if let info = info {
+                dumping["info"] = info
+            }
+
+            if let error = error {
+                dumping["error"] = error
+            }
+
+            var name = "\(Date().isoString) \(logLevel.descriptionEmoji) [AppPanel] - \(logLevel.description)"
+
+            if let message = message {
+                name += ": \(message)"
+            }
+
+            if dumping.isEmpty {
+                print(name)
+            } else {
+                dump(
+                    dumping,
+                    name: name,
+                    indent: 0,
+                    maxDepth: 100,
+                    maxItems: 100
+                )
+            }
         }
+    }
+}
+
+// MARK: - Convenience Methods
+
+extension AppPanelLogger {
+    static func debug(_ message: String, info: [String: Any]? = nil) {
+        debug(logLevel: .debug, message: message, info: info, error: nil)
+    }
+
+    static func info(_ message: String, info: [String: Any]? = nil) {
+        debug(logLevel: .info, message: message, info: info, error: nil)
+    }
+
+    static func warn(_ message: String, info: [String: Any]? = nil) {
+        debug(logLevel: .warn, message: message, info: info, error: nil)
+    }
+
+    static func error(_ message: String, error: Swift.Error? = nil, info: [String: Any]? = nil) {
+        debug(logLevel: .error, message: message, info: info, error: error)
+    }
+}
+
+// MARK: - Date Extension
+
+extension Date {
+    var isoString: String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.string(from: self)
+    }
+}
+
+// MARK: - Error Extension
+
+extension Swift.Error {
+    var safeLocalizedDescription: String {
+        return localizedDescription
     }
 }
