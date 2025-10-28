@@ -28,9 +28,7 @@ public class AppPanelPush {
         let tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
         self.deviceToken = tokenString
         AppPanelLogger.debug("APNs token received: \(tokenString)")
-
-        // Register with AppPanel backend (fire-and-forget)
-        tokenManager.registerToken(apnsToken: tokenString) { _, _ in }
+        tokenManager.registerToken(apnsToken: tokenString)
     }
 
     /// Set the APNs device token from a string
@@ -39,9 +37,7 @@ public class AppPanelPush {
     public func setAPNsToken(_ tokenString: String) {
         deviceToken = tokenString
         AppPanelLogger.debug("APNs token received: \(tokenString)")
-
-        // Register with AppPanel backend (fire-and-forget)
-        tokenManager.registerToken(apnsToken: tokenString) { _, _ in }
+        tokenManager.registerToken(apnsToken: tokenString)
     }
 
     // TODO: Topic subscription endpoints not yet available
