@@ -2,15 +2,14 @@ import Foundation
 
 /// The main entry point for the AppPanel SDK
 public class AppPanel {
-
     /// Shared instance of AppPanel
     public static let shared = AppPanel()
 
     /// The current configuration
-    internal var configuration: AppPanelConfiguration?
+    var configuration: AppPanelConfiguration?
 
     /// Push notification manager
-    public private(set) var push: AppPanelPush?
+    public private(set) var push: AppPanelPush!
 
     /// Device manager for handling device ID
     private let deviceManager = AppPanelDeviceManager()
@@ -44,28 +43,28 @@ public class AppPanel {
         shared.configure(apiKey: apiKey, options: options)
     }
 
-    internal func configure(apiKey: String, options: AppPanelOptions? = nil) {
+    func configure(apiKey: String, options: AppPanelOptions? = nil) {
         guard !apiKey.isEmpty else {
             AppPanelLogger.error("API Key cannot be empty")
             return
         }
 
         // Create configuration
-        self.configuration = AppPanelConfiguration(
+        configuration = AppPanelConfiguration(
             apiKey: apiKey,
             options: options ?? AppPanelOptions()
         )
 
         // Initialize device ID (persistent across app installs)
-        self.deviceId = deviceManager.getDeviceId()
+        deviceId = deviceManager.getDeviceId()
         AppPanelLogger.info("Device ID: \(deviceId!)")
 
         // Initialize network client
-        self.networkClient = APIClient(baseURL: configuration!.baseURL) { config in
+        networkClient = APIClient(baseURL: configuration!.baseURL) { config in
             config.sessionConfiguration.httpAdditionalHeaders = [
                 "X-AppPanel-SDK-Version": "1.0.0",
                 "X-AppPanel-Platform": "iOS",
-                "X-AppPanel-API-Key": apiKey
+                "X-AppPanel-API-Key": apiKey,
             ]
         }
 
@@ -73,12 +72,13 @@ public class AppPanel {
         registerDevice()
 
         // Initialize push notifications
-        self.push = AppPanelPush(configuration: configuration!)
+        push = AppPanelPush(configuration: configuration!)
 
         AppPanelLogger.info("AppPanel SDK configured successfully")
     }
 
     // MARK: - User Management
+
     // TODO: User login/logout endpoints not yet available
     // These will be implemented when the backend endpoints are ready
 
@@ -117,7 +117,7 @@ public class AppPanel {
         return shared.regenerateDeviceId()
     }
 
-    internal func regenerateDeviceId() -> UUID {
+    func regenerateDeviceId() -> UUID {
         guard isConfigured else {
             AppPanelLogger.error("Cannot regenerate device ID: SDK not configured")
             return deviceId
@@ -125,7 +125,7 @@ public class AppPanel {
 
         let oldDeviceIdString = deviceId.uuidString
         let newDeviceId = deviceManager.regenerateDeviceId()
-        self.deviceId = newDeviceId
+        deviceId = newDeviceId
 
         AppPanelLogger.info("Regenerated device ID from \(oldDeviceIdString) to \(newDeviceId.uuidString)")
 
